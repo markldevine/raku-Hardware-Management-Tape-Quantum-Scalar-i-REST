@@ -1,0 +1,36 @@
+{
+  "auth": "github:markldevine",
+  "authors": [ "Mark Devine <mark@markdevine.com>" ],
+  "depends": [
+    "Data::Dump::Tree",
+    "HTTP::UserAgent",
+    "HTTP::Request::Common",
+    "IP::Addr",
+    "KHPH",
+    "LibXML",
+    "MessageStream",
+    "OO::Monitors",
+    "POSIX::getaddrinfo",
+    "Term::Choose",
+    "Term::TablePrint",
+    "Terminal::ANSIColor",
+    "URI",
+    "XML"
+  ],
+  "description": "Hardware Management: Tape: Quantum Scalar i(3|6) REST",
+  "license": "Artistic-2.0",
+  "meta-version": 0,
+  "name": "Hardware::Management::Tape::Quantum::Scalar::i::REST",
+  "perl": "6.d",
+  "provides": {
+    "Hardware::Management::Tape::Quantum::Scalar::i::REST": "lib/Hardware/Management/Tape/Quantum/Scalar/i/REST/AML.rakumod",
+    "Hypervisor::IBM::POWER::HMC::REST::Logon::X-API-Session": "lib/Hypervisor/IBM/POWER/HMC/REST/Logon/X-API-Session.rakumod"
+  },
+  "resources": [],
+  "source-url": "https://github.com/markldevine/raku-Hardware-Management-Tape-Quantum-Scalar-i-REST.git",
+  "tags": [
+    "Quantum Scalar",
+    "REST"
+  ],
+  "version": "0.0.1"
+}

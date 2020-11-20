@@ -1,0 +1,176 @@
+#!/bin/bash
+#
+# Copyright 2020 Quantum Corporation. All rights reserved.
+#
+# This script is a template to issue Quantum Scalar Automation webservice # commands
+#
+####################################################
+# Variable Definitions
+####################################################
+## Command line options
+LIBRARY_ADDRESS="" # l option
+LIBRARY_PASSWORD="" # p option
+# options with defaults
+LIBRARY_USER="admin" # u option
+DRIVE_COORDINATE="1,1,5,1,1" # d option
+## curl option
+CURL_ALLOW_INSECURE="--insecure"
+## get current directory
+PATHWD=`pwd`
+## The cookie file is created when the user logs in and is used for subsequent requests
+COOKIE_FILE=$PATHWD/scalarCookies.txt
+## Use for debugging curl statements . The http response is captured in this file.
+OUTFILE=$PATHWD/scalarWSout.txt
+## define protocol
+PROTOCOL="https://"
+####################################################
+# Do not change
+# Wrapper to run a cli command
+# Use this runCommand function to run curl commands - it provides error checking
+####################################################
+runCommand()
+{
+local command="$1";
+echo "RUNNING COMMAND: \"$command\""
+COMMAND_OUTPUT=`eval $command 2>&1`
+COMMAND_EXIT_STATUS=$?
+if [ $COMMAND_EXIT_STATUS -ne 0 ]; then
+echo "Exit Status: $COMMAND_EXIT_STATUS"
+echo "ERROR ON COMMAND: \"$command\""
+echo "$COMMAND_OUTPUT"
+exit $COMMAND_EXIT_STATUS
+fi
+echo "success"
+}
+####################################################
+# Do not change
+# This code displays help text when the '?' arg is input
+####################################################
+usage()
+{
+echo "Usage: $0 [OPTIONS...]
+OPTIONS:
+-l <library address> required. Specifies library ip address or DNS name
+-u <user> optional. Specifies user name for library login
+defaults to \"admin\"
+-p <password> required. Specifies user password
+-d <drive coordinate> required.
+Typical usage example:
+./MyWebServiceScript.sh -l \"10.20.174.208\" -u admin -p password -d \"1,1,1,1,1\"
+";
+exit 1;
+}
+####################################################
+# Do not change
+# This code process arguments passed into the script
+####################################################
+if [ $# -eq 0 ]; then
+usage
+else
+while getopts "l:p:u:d:" opt
+do
+case "$opt" in
+l) LIBRARY_ADDRESS="$OPTARG"
+;;
+p) LIBRARY_PASSWORD="$OPTARG"
+;;
+u) LIBRARY_USER="$OPTARG"
+;;
+d) DRIVE_COORDINATE="$OPTARG"
+;;
+*) usage
+;;
+esac
+done
+fi
+####################################################
+# Do not change
+# This function logs into the library and saves the cookie to a file
+####################################################
+doLibraryLogin()
+{
+runCommand "curl -X POST -c $COOKIE_FILE -o $OUTFILE -w \"%{http_code}\" -sL -H 'Accept: application/json' -H 'content-type: application/json' -d '{\"name\":\"$LIBRARY_USER\", \"password\":\"$LIBRARY_PASSWORD\"}' ${CURL_ALLOW_INSECURE} ${PROTOCOL}${LIBRARY_ADDRESS}/aml/users/login"
+if [ "$COMMAND_OUTPUT" != "200" ]; then
+echo "Http Status Code: $COMMAND_OUTPUT"
+doLibraryLogout
+exit 1
+fi
+}
+####################################################
+# Do not change
+# This function logs out of the library so the session is closed on the server
+####################################################
+doLibraryLogout()
+{
+runCommand "curl -X DELETE -b $COOKIE_FILE -o $OUTFILE -w \"%{http_code}\" -sL ${CURL_ALLOW_INSECURE} ${PROTOCOL}${LIBRARY_ADDRESS}/aml/users/login"
+if [ "$COMMAND_OUTPUT" != "200" ]; then
+echo "Http Status Code: $COMMAND_OUTPUT"
+exit 1
+fi
+}
+####################################################
+# Do not change
+# This function displays the last REST command's output to the screen
+####################################################
+doDisplayOutput()
+{
+## Display output
+cat $OUTFILE
+printf "\n"
+printf "\n"
+}
+##################################################
+###### Main Line - executes the following commands - script main line
+##################################################
+###########
+# Setup the environment for the script execution
+###########
+## Remove the old cookie files and result files
+rm $COOKIE_FILE
+rm $OUTFILE
+## login, get session cookie
+doLibraryLogin
+doDisplayOutput
+####################################################
+# Add user defined functions here
+####################################################
+doLibraryPing()
+{
+### http://10.20.174.208/aml
+runCommand "curl -X GET -b $COOKIE_FILE -o $OUTFILE -w \"%{http_code}\" -sL -H 'Accept: application/json' ${CURL_ALLOW_INSECURE} ${PROTOCOL}${LIBRARY_ADDRESS}/aml"
+if [ "$COMMAND_OUTPUT" != "200" ]; then
+echo "Http Status Code: $COMMAND_OUTPUT"
+doLibraryLogout
+exit 1
+fi
+}
+doGetDriveState()
+{
+### http://10.20.174.208/aml/drive/1,1,1,1,1/operations/state
+runCommand "curl -X GET -b $COOKIE_FILE -o $OUTFILE -w \"%{http_code}\" -sL -H 'Accept: application/json' ${CURL_ALLOW_INSECURE} ${PROTOCOL}${LIBRARY_ADDRESS}/aml/drive/${DRIVE_COORDINATE}/operations/state"
+if [ "$COMMAND_OUTPUT" != "200" ]; then
+echo "Http Status Code: $COMMAND_OUTPUT"
+doLibraryLogout
+exit 1
+fi
+}
+################################################################
+# Add user defined function calls AFTER this line to execute desired webservices
+################################################################
+## discover/ping library
+doLibraryPing
+doDisplayOutput
+## show selected drive state
+doGetDriveState
+doDisplayOutput
+################################################################
+# Add user defined functions BEFORE this line to execute desired webservices
+################################################################
+###########
+# Tear down the environment for the script execution
+###########
+## logout
+doLibraryLogout
+doDisplayOutput
+echo "SUCCESS: Script complete"
+exit 0
