@@ -172,5 +172,6 @@ doDisplayOutput
 ## logout
 doLibraryLogout
 doDisplayOutput
+
 echo "SUCCESS: Script complete"
 exit 0
