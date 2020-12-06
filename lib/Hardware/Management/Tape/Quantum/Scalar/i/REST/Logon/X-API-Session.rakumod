@@ -6,7 +6,7 @@ use     KHPH;
 use     URI;
 use     LibXML;
 unit    monitor Hypervisor::IBM::POWER::HMC::REST::Logon::X-API-Session:api<1>:auth<Mark Devine (mark@markdevine.com)>
-            does Hypervisor::IBM::POWER::HMC::REST::ETL::XML;
+        does Hypervisor::IBM::POWER::HMC::REST::ETL::XML;
 
 has     Bool:D                              $.cache                     is required;
 has     Str:D                               $.cache-directory           is required;
@@ -17,8 +17,8 @@ has     Str:D                               $.user-id                   is requi
 has     Str                                 $.password-secure-at;
 has     Str                                 $.session-token-secure-at;
 has     HTTP::UserAgent                     $.ua;
-has     Int                                 $.ua-timeout                = 180;
-has     Str                                 $.useragent                 = 'Rakudo HTTP::UserAgent';
+has     Int                                 $.ua-timeout = 180;
+has     Str                                 $.useragent = 'Rakudo HTTP::UserAgent';
 has     Str                                 $.X-API-Session;
 
 class Cache-Endpoint {
@@ -45,7 +45,7 @@ method fetch (Str:D $uri-segments-str, Bool :$retry = True, Bool :$optional --> 
             $cache-entry.xml-path.IO.chmod(0o600);
             return $cache-entry.xml-path;
         }
-        when 401|403 {
+        when 401 | 403 {
             if $retry {
                 self!DELETE;
                 self!PUT;
@@ -67,7 +67,7 @@ method fetch (Str:D $uri-segments-str, Bool :$retry = True, Bool :$optional --> 
 
 method init () {
     $!ua = HTTP::UserAgent.new(:$!useragent, :10timeout);
-    $!ua.timeout    = self.ua-timeout;
+    $!ua.timeout = self.ua-timeout;
     $!X-API-Session = Nil;
     if self!session-token-stash-path.IO.e {
         my $credentials = KHPH.new(:stash-path(self!session-token-stash-path)).expose;
@@ -92,7 +92,7 @@ method !PUT () {
                 :prompt(self.user-id ~ '@' ~ self.hmc ~ ' password'),
                 :stash-path(self!password-stash-path),
                 :user-exclusive-at($!password-secure-at),
-               ).expose {
+                ).expose {
             die 'need to remove ' ~ self!password-stash-path;
         }
     }
@@ -102,18 +102,18 @@ method !PUT () {
         <UserID kb="CUR" kxe="false">' ~ self.user-id ~ '</UserID>
         <Password kb="CUR" kxe="false">' ~ $password ~ '</Password>
     </LogonRequest>';
-    my $response = $!ua.request(PUT $uri, :$content, |%header);
+    my $response = $!ua.request(PUT$uri, :$content, |%header);
     given $response.code {
         when 200 {
             my LibXML::Document $xml-doc;
             die 'Unable to read XML from response' unless $xml-doc = LibXML.parse(:string($response.content), :!blanks);
-            my LibXML::Element $xml    = $xml-doc.documentElement;
+            my LibXML::Element $xml = $xml-doc.documentElement;
             die unless $!X-API-Session = self.etl-text(:TAG<X-API-Session>, :$xml);
             $ = KHPH.new(
-                :secret($!X-API-Session),
-                :stash-path(self!session-token-stash-path),
-                :user-exclusive-at($!session-token-secure-at),
-            );
+                    :secret($!X-API-Session),
+                    :stash-path(self!session-token-stash-path),
+                    :user-exclusive-at($!session-token-secure-at),
+                    );
         }
         default {
             note $response;
@@ -137,16 +137,16 @@ method !DELETE () {
 }
 
 method !get-cache-entry (Str:D $uri-segments-str) {
-    my $uri-str     = 'https://' ~ self.hmc ~ ':12443' ~ $uri-segments-str;
-    my URI $uri    .= new($uri-str);
-    my @sub-dirs   = $uri.segments[1 .. *];
-    my $child       = @sub-dirs.pop;
-    my $parent      = @sub-dirs.pop;
-    my $base-ext    = $*USER ~ '/' ~ $uri.host ~ '/' ~ @sub-dirs.join('/') ~ '/' ~ $parent;
-    my $base        = $!cache-directory ~ '/' ~ $base-ext;
+    my $uri-str = 'https://' ~ self.hmc ~ ':12443' ~ $uri-segments-str;
+    my URI $uri .= new($uri-str);
+    my @sub-dirs = $uri.segments[1 ..*];
+    my $child = @sub-dirs.pop;
+    my $parent = @sub-dirs.pop;
+    my $base-ext = $*USER ~ '/' ~ $uri.host ~ '/' ~ @sub-dirs.join('/') ~ '/' ~ $parent;
+    my $base = $!cache-directory ~ '/' ~ $base-ext;
     unless $base.IO.e {
         mkdir($base);
-        my @dirs    = $base-ext.split('/');
+        my @dirs = $base-ext.split('/');
         my $p;
         for @dirs -> $dir {
             $p ~= '/' ~ $dir;
@@ -154,35 +154,35 @@ method !get-cache-entry (Str:D $uri-segments-str) {
             chmod(0o700, $path) unless ~$path.IO.mode == 700;
         }
     }
-    my $parent-xml  = $base ~ '.xml';
-    my $xml-path    = $base ~ '/' ~ $child ~ '.xml';
+    my $parent-xml = $base ~ '.xml';
+    my $xml-path = $base ~ '/' ~ $child ~ '.xml';
 
-################################################################################
-################################################################################
-#%%%    This logic might not make sense for the HMC REST API - check it...  %%%#
-################################################################################
-################################################################################
+    ################################################################################
+    ################################################################################
+    #%%%    This logic might not make sense for the HMC REST API - check it...  %%%#
+    ################################################################################
+    ################################################################################
 
-#   If no cache endpoint for this item yet, perform a fresh lookup
+    #   If no cache endpoint for this item yet, perform a fresh lookup
     return Cache-Endpoint.new(
-        :$xml-path,
-        :$uri,
-        :valid(False),
-    ) unless $xml-path.IO.e;
+            :$xml-path,
+            :$uri,
+            :valid(False),
+            ) unless $xml-path.IO.e;
 
-#   If cache entry for this item is older than its parent (if relevant), perform a fresh lookup
+    #   If cache entry for this item is older than its parent (if relevant), perform a fresh lookup
     return Cache-Endpoint.new(
-        :$xml-path,
-        :$uri,
-        :valid(False),
-    ) if $parent-xml.IO.e && ($xml-path.IO.changed < $parent-xml.IO.changed);
+            :$xml-path,
+            :$uri,
+            :valid(False),
+            ) if $parent-xml.IO.e && ($xml-path.IO.changed < $parent-xml.IO.changed);
 
-#   Good cache entry
+    #   Good cache entry
     return Cache-Endpoint.new(
-        :$xml-path,
-        :$uri,
-        :valid(True),
-    );
+            :$xml-path,
+            :$uri,
+            :valid(True),
+            );
 }
 
 method !password-stash-path () {
@@ -195,6 +195,8 @@ method !session-token-stash-path () {
     return(self.session-token-secure-at ~ '/' ~ self.hmc ~ '/web/Logon/' ~ self.user-id ~ '/' ~ 'session-token.khph');
 }
 
-method xml-name-exceptions () { return set (); }
+method xml-name-exceptions () {
+    return set ();
+}
 
 =finish
